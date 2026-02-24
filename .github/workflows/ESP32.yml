@@ -20,7 +20,7 @@ jobs:
         run: pip install robotframework pyserial requests
 
       - name: Verify Arduino CLI exists
-        shell: pwsh
+        shell: powershell
         run: |
           if (!(Test-Path ".\arduino-cli.exe")) {
             Write-Host "arduino-cli.exe not found!"
