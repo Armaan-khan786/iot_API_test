@@ -13,18 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show Python version (use local installation)
+      - name: Show Python version
         run: python --version
 
       - name: Install Python dependencies
         run: pip install robotframework pyserial requests
 
       - name: Verify Arduino CLI exists
+        shell: pwsh
         run: |
-          if not exist arduino-cli.exe (
-            echo "arduino-cli.exe not found!"
+          if (!(Test-Path ".\arduino-cli.exe")) {
+            Write-Host "arduino-cli.exe not found!"
             exit 1
-          )
+          }
 
       - name: Run Robot Hardware Test (live logs)
         run: |
