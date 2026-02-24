@@ -13,10 +13,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
+      - name: Show Python version (use local installation)
+        run: python --version
 
       - name: Install Python dependencies
         run: pip install robotframework pyserial requests
@@ -28,8 +26,7 @@ jobs:
             exit 1
           )
 
-      # ⭐ KEY STEP — LIVE OUTPUT ENABLED
-      - name: Run Robot Hardware Test (show live logs)
+      - name: Run Robot Hardware Test (live logs)
         run: |
           set PYTHONUNBUFFERED=1
           robot --console verbose --loglevel TRACE test_device.robot
