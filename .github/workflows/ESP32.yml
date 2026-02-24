@@ -1,0 +1,45 @@
+name: ESP32 Hardware Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-esp32:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Python dependencies
+        run: pip install robotframework pyserial requests
+
+      - name: Verify Arduino CLI exists
+        run: |
+          if not exist arduino-cli.exe (
+            echo "arduino-cli.exe not found!"
+            exit 1
+          )
+
+      # ⭐ KEY STEP — LIVE OUTPUT ENABLED
+      - name: Run Robot Hardware Test (show live logs)
+        run: |
+          set PYTHONUNBUFFERED=1
+          robot --console verbose --loglevel TRACE test_device.robot
+
+      - name: Upload Robot Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: robot-report
+          path: |
+            log.html
+            report.html
+            output.xml
