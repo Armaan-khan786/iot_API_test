@@ -70,7 +70,7 @@ def verify_device_boot():
 def verify_cloud():
     print("\n>>> Checking Blynk cloud API...")
 
-    BLYNK_TOKEN = os.getenv("BLYNK_TOKEN")
+    BLYNK_TOKEN = os.getenv("AV6Yyn81W7kNA723S4Y0asvrV2eUu6nC")
 
     if not BLYNK_TOKEN:
         print("Missing BLYNK_TOKEN environment variable")
