@@ -8,29 +8,23 @@ on:
 jobs:
   test-esp32:
     runs-on: self-hosted
+    timeout-minutes: 30
+
+    env:
+      BLYNK_TOKEN: ${{ secrets.BLYNK_TOKEN }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show Python version
-        run: python --version
-
       - name: Install Python dependencies
-        run: pip install robotframework pyserial requests
-
-      - name: Verify Arduino CLI exists
-        shell: powershell
         run: |
-          if (!(Test-Path ".\arduino-cli.exe")) {
-            Write-Host "arduino-cli.exe not found!"
-            exit 1
-          }
+          python -m pip install --upgrade pip
+          pip install robotframework pyserial requests
 
-      - name: Run Robot Hardware Test (live logs)
+      - name: Run Robot Test
         run: |
-          set PYTHONUNBUFFERED=1
-          robot --console verbose --loglevel TRACE test_device.robot
+          robot --console verbose test_device.robot
 
       - name: Upload Robot Report
         uses: actions/upload-artifact@v4
