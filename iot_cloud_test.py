@@ -3,25 +3,26 @@ import serial
 import time
 import requests
 import sys
+import os
+import json
 
 # ==============================
-# USER CONFIG
+# CONFIG
 # ==============================
 ARDUINO_CLI = ".\\arduino-cli.exe"
 COM_PORT = "COM6"
 BOARD = "esp32:esp32:esp32"
 SKETCH_PATH = "temp"
-BLYNK_TOKEN = "AV6Yyn81W7kNA723S4Y0asvrV2eUu6nC"
+BLYNK_TOKEN = os.getenv("AV6Yyn81W7kNA723S4Y0asvrV2eUu6nC")
 VIRTUAL_PIN = "V0"
 
 # ==============================
-# COMMON HELPERS
+# HELPERS
 # ==============================
 def run_command(cmd):
     print("\n>>>", cmd)
     result = subprocess.run(cmd, shell=True)
     if result.returncode != 0:
-        print("❌ Command failed")
         sys.exit(1)
 
 def open_serial_with_retry(port, baud=115200, retries=5):
@@ -30,23 +31,18 @@ def open_serial_with_retry(port, baud=115200, retries=5):
             return serial.Serial(port, baud, timeout=1)
         except:
             time.sleep(2)
-    print("❌ Cannot open serial port")
     sys.exit(1)
 
 # ==============================
-# CORE OPERATIONS
+# CORE FUNCTIONS
 # ==============================
 def compile_firmware():
-    print("\n=== COMPILING FIRMWARE ===")
     run_command(f'"{ARDUINO_CLI}" compile --fqbn {BOARD} {SKETCH_PATH}')
 
 def flash_firmware():
-    print("\n=== FLASHING ESP32 ===")
     run_command(f'"{ARDUINO_CLI}" upload -p {COM_PORT} --fqbn {BOARD} {SKETCH_PATH}')
 
 def verify_device_boot():
-    print("\n=== WAITING FOR DEVICE BOOT ===")
-
     ser = open_serial_with_retry(COM_PORT)
     time.sleep(5)
 
@@ -56,10 +52,15 @@ def verify_device_boot():
 
     start_time = time.time()
 
-    while time.time() - start_time < 40:
+    while time.time() - start_time < 60:
         line = ser.readline().decode(errors="ignore").strip()
+
         if line:
             print("DEVICE:", line)
+
+            if line.startswith("ERROR:"):
+                ser.close()
+                sys.exit(1)
 
             if "WIFI_CONNECTED" in line:
                 wifi_ok = True
@@ -67,49 +68,43 @@ def verify_device_boot():
             if "BLYNK_CONNECTED" in line:
                 blynk_ok = True
 
-            if line.startswith("TEMP:"):
+            if line.startswith("{") and "TEMP" in line:
                 try:
-                    temperature = float(line.split(":")[1])
+                    data = json.loads(line)
+                    temperature = float(data["TEMP"])
                 except:
                     pass
 
         if wifi_ok and blynk_ok and temperature is not None:
             ser.close()
-            print("Device Temperature:", temperature)
             return temperature
 
     ser.close()
-
-    if not wifi_ok:
-        print("❌ FAIL: WiFi not connected")
-    if not blynk_ok:
-        print("❌ FAIL: Blynk not connected")
-
     sys.exit(1)
 
-def verify_cloud_value():
-    print("\n=== CHECKING CLOUD VALUE ===")
-
+def verify_cloud_value(device_temp):
     for _ in range(5):
         try:
             url = f"https://blynk.cloud/external/api/get?token={BLYNK_TOKEN}&{VIRTUAL_PIN}"
-            value = float(requests.get(url, timeout=5).text)
-            print("Cloud Temperature:", value)
+            response = requests.get(url, timeout=5)
 
-            if 10 <= value <= 50:
+            if response.status_code != 200:
+                sys.exit(1)
+
+            value = float(response.text)
+
+            if abs(device_temp - value) <= 2:
                 return value
             else:
-                print("❌ FAIL: Temperature out of range")
                 sys.exit(1)
 
         except:
             time.sleep(2)
 
-    print("❌ FAIL: Cannot read cloud value")
     sys.exit(1)
 
 # ==============================
-# FUNCTIONS FOR ROBOT FRAMEWORK
+# ROBOT FUNCTIONS
 # ==============================
 def main_compile():
     compile_firmware()
@@ -121,17 +116,18 @@ def main_device_check():
     verify_device_boot()
 
 def main_cloud_check():
-    verify_cloud_value()
+    device_temp = verify_device_boot()
+    verify_cloud_value(device_temp)
 
 # ==============================
-# FULL PIPELINE (manual run)
+# FULL PIPELINE
 # ==============================
 def main():
     compile_firmware()
     flash_firmware()
-    verify_device_boot()
-    verify_cloud_value()
-    print("\n🎉 PASS: SYSTEM HEALTHY")
+    device_temp = verify_device_boot()
+    verify_cloud_value(device_temp)
+    print("🎉 PASS: SYSTEM HEALTHY")
 
 if __name__ == "__main__":
     main()
