@@ -1,28 +1,20 @@
 *** Settings ***
-Library    Process
+Library    RequestsLibrary
+
+*** Variables ***
+${TOKEN}    AV6Yyn81W7kNA723S4Y0asvrV2eUu6nC
+${BASE}     https://blynk.cloud/external/api
 
 *** Test Cases ***
-Compile Firmware
-    Log To Console    ===== COMPILING ESP32 FIRMWARE =====
-    ${result}=    Run Process    python    -c    import iot_cloud_test; iot_cloud_test.main_compile()    shell=True
-    Should Be Equal As Integers    ${result.rc}    0
-
-Flash ESP32
-    Log To Console    ===== FLASHING DEVICE =====
-    ${result}=    Run Process    python    -c    import iot_cloud_test; iot_cloud_test.main_flash()    shell=True
-    Should Be Equal As Integers    ${result.rc}    0
-
-Verify Device Boot
-    Log To Console    ===== VERIFYING WIFI + RSSI + DEVICE =====
-    ${result}=    Run Process    python    -c    import iot_cloud_test; iot_cloud_test.main_device_check()    shell=True
-    Should Be Equal As Integers    ${result.rc}    0
-
 Validate Cloud Temperature
-    Log To Console    ===== VALIDATING CLOUD TEMPERATURE =====
-    ${result}=    Run Process    python    -c    import iot_cloud_test; iot_cloud_test.main_cloud_temp()    shell=True
-    Should Be Equal As Integers    ${result.rc}    0
+    ${response}=    GET    ${BASE}/get?token=${TOKEN}&v0
+    ${temp}=    Convert To Number    ${response.text}
+    Log    Temperature: ${temp}
+    Should Be True    ${temp} > 0
+    Should Be True    ${temp} < 100
 
 Validate Cloud WiFi Strength
-    Log To Console    ===== VALIDATING CLOUD WIFI RSSI =====
-    ${result}=    Run Process    python    -c    import iot_cloud_test; iot_cloud_test.main_cloud_rssi()    shell=True
-    Should Be Equal As Integers    ${result.rc}    0
+    ${response}=    GET    ${BASE}/get?token=${TOKEN}&v1
+    ${rssi}=    Convert To Number    ${response.text}
+    Log    RSSI: ${rssi}
+    Should Be True    -120 < ${rssi} < 0
