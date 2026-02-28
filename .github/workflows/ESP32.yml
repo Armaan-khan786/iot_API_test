@@ -1,43 +1,32 @@
-name: ESP32 Hardware Test
+name: IoT Cloud Robot Test CI
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  test-esp32:
-    runs-on: self-hosted
+  robot-test:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Show Python version
-        run: python --version
-
-      - name: Install Python dependencies
-        run: pip install robotframework pyserial requests
-
-      - name: Verify Arduino CLI exists
-        shell: powershell
-        run: |
-          if (!(Test-Path ".\arduino-cli.exe")) {
-            Write-Host "arduino-cli.exe not found!"
-            exit 1
-          }
-
-      - name: Run Robot Hardware Test (live logs)
-        run: |
-          set PYTHONUNBUFFERED=1
-          robot --console verbose --loglevel TRACE test_device.robot
-
-      - name: Upload Robot Report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          name: robot-report
-          path: |
-            log.html
-            report.html
-            output.xml
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install robotframework
+          pip install robotframework-requests
+
+      - name: Run Robot Tests
+        run: |
+          robot test_device.robot
